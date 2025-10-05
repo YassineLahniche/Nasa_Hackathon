@@ -611,8 +611,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 100);
     
     // Log initialization complete
-    console.log('%c🚀 Exo-Explorer Dashboard Initialized', 'color: #38bdf8; font-size: 16px; font-weight: bold;');
-    console.log('%c⌨️  Keyboard Shortcuts:', 'color: #8b5cf6; font-weight: bold;');
+    console.log('%c Exo-Explorer Dashboard Initialized', 'color: #38bdf8; font-size: 16px; font-weight: bold;');
+    console.log('%c  Keyboard Shortcuts:', 'color: #8b5cf6; font-weight: bold;');
     console.log('  Ctrl/Cmd + 1: Explorer Mode');
     console.log('  Ctrl/Cmd + 2: Researcher Mode');
     console.log('  Ctrl/Cmd + R: Load Random Candidate');
