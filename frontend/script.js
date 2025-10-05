@@ -1,5 +1,5 @@
 // Enhanced Exo-Explorer Dashboard Script
-// Premium Edition with Smooth Animations
+// Premium Edition with Smooth Animations (Corrected & Final)
 
 document.addEventListener('DOMContentLoaded', () => {
     // === CONFIGURATION ===
@@ -33,18 +33,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const animateValue = (element, start, end, duration) => {
-        const range = end - start;
-        const increment = range / (duration / 16);
-        let current = start;
-        
-        const timer = setInterval(() => {
-            current += increment;
-            if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-                current = end;
-                clearInterval(timer);
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const currentValue = progress * (end - start) + start;
+            element.textContent = `Confidence: ${currentValue.toFixed(1)}%`;
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
             }
-            element.textContent = current.toFixed(1) + '%';
-        }, 16);
+        };
+        window.requestAnimationFrame(step);
     };
     
     // === API FUNCTIONS ===
@@ -57,19 +56,19 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = `
                 <div class="stat-item">
                     <span class="stat-label">Accuracy</span>
-                    <span class="stat-value shimmer">${stats.accuracy}%</span>
+                    <span class="stat-value">${stats.accuracy}%</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">F1-Score</span>
-                    <span class="stat-value shimmer">${stats.f1Score}</span>
+                    <span class="stat-value">${stats.f1Score}</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Precision</span>
-                    <span class="stat-value shimmer">${stats.precision}</span>
+                    <span class="stat-value">${stats.precision}</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Recall</span>
-                    <span class="stat-value shimmer">${stats.recall}</span>
+                    <span class="stat-value">${stats.recall}</span>
                 </div>
             `;
         } catch (error) {
@@ -80,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     async function getPrediction(params) {
         try {
-            // Add loading state
             predictionOutput.parentElement.style.opacity = '0.6';
             
             const response = await fetch(`${API_BASE_URL}/predict`, {
@@ -89,44 +87,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(params)
             });
             
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.statusText}`);
+            }
+
             const result = await response.json();
+            if (result.error) {
+                throw new Error(result.error);
+            }
             
-            // Animate the update
             setTimeout(() => {
                 updateExplorerUI(result);
                 predictionOutput.parentElement.style.opacity = '1';
             }, 200);
         } catch (error) {
             console.error('Error getting prediction:', error);
-            showNotification('Prediction failed', 'error');
+            showNotification(`Prediction failed: ${error.message}`, 'error');
             predictionOutput.parentElement.style.opacity = '1';
         }
     }
     
     // === UI UPDATE FUNCTIONS ===
     function updateExplorerUI(result) {
-        const resultElement = predictionOutput.parentElement;
+        const resultElement = predictionOutput;
         
-        // Update prediction text
-        predictionOutput.querySelector('.prediction-text').textContent = result.prediction;
-        
-        // Set data attribute for styling
+        resultElement.querySelector('.prediction-text').textContent = result.prediction;
         resultElement.setAttribute('data-prediction', result.prediction);
         
-        // Animate confidence
         const currentConfidence = parseFloat(probabilityDisplay.textContent.match(/[\d.]+/)?.[0] || 0);
         const newConfidence = result.probability * 100;
         animateValue(probabilityDisplay, currentConfidence, newConfidence, 500);
         
-        // Update explanation
         explanationText.textContent = generateExplanation(result);
         
-        // Update chart
         if (result.featureImportance) {
             updateChart(result.featureImportance);
         }
         
-        // Add pulse animation
         resultElement.style.animation = 'none';
         setTimeout(() => {
             resultElement.style.animation = '';
@@ -151,15 +148,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function createSliders() {
+        // *** KEY CORRECTION: Using standardized model feature names ***
         const sliderDefs = {
-            koi_period: { label: 'Orbital Period (days)', min: 0.1, max: 200, value: 10, unit: 'd' },
-            koi_depth: { label: 'Transit Depth (ppm)', min: 1, max: 20000, value: 500, unit: '' },
-            koi_duration: { label: 'Transit Duration (hrs)', min: 0.1, max: 10, value: 3, unit: 'h' },
-            koi_prad: { label: 'Planetary Radius (R⊕)', min: 0.1, max: 25, value: 2, unit: 'R⊕' },
-            koi_insol: { label: 'Insolation Flux (F⊕)', min: 0.1, max: 1000, value: 10, unit: 'F⊕' },
-            koi_steff: { label: 'Stellar Temp (K)', min: 2000, max: 10000, value: 5500, unit: 'K' },
-            koi_srad: { label: 'Stellar Radius (R☉)', min: 0.1, max: 20, value: 1, unit: 'R☉' },
-            koi_slogg: { label: 'Stellar Gravity (log g)', min: 1, max: 6, value: 4.5, unit: '' }
+            'orbital_period': { label: 'Orbital Period (days)', min: 0.1, max: 200, value: 10, unit: 'd' },
+            'transit_depth': { label: 'Transit Depth (ppm)', min: 1, max: 20000, value: 500, unit: '' },
+            'transit_duration': { label: 'Transit Duration (days)', min: 0.01, max: 0.5, value: 0.125, unit: 'd' },
+            'planet_radius': { label: 'Planetary Radius (R⊕)', min: 0.1, max: 25, value: 2, unit: 'R⊕' },
+            'insolation_flux': { label: 'Insolation Flux (F⊕)', min: 0.1, max: 1000, value: 10, unit: 'F⊕' },
+            'stellar_temp': { label: 'Stellar Temp (K)', min: 2000, max: 10000, value: 5500, unit: 'K' },
+            'stellar_radius': { label: 'Stellar Radius (R☉)', min: 0.1, max: 20, value: 1, unit: 'R☉' },
+            'stellar_log_g': { label: 'Stellar Gravity (log g)', min: 1, max: 6, value: 4.5, unit: '' }
         };
         
         sliderContainer.innerHTML = '';
@@ -169,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const def = sliderDefs[key];
             currentParams[key] = def.value;
             
-            // Create slider for Explorer mode
             const sliderGroup = document.createElement('div');
             sliderGroup.className = 'slider-group';
             
@@ -185,8 +182,9 @@ document.addEventListener('DOMContentLoaded', () => {
             slider.max = def.max;
             slider.value = def.value;
             slider.step = (def.max - def.min) / 200;
+            slider.setAttribute('data-key', key);
+            slider.setAttribute('data-unit', def.unit || '');
             
-            // Debounce prediction calls
             let predictionTimeout;
             slider.oninput = (e) => {
                 const val = parseFloat(e.target.value);
@@ -203,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sliderGroup.appendChild(slider);
             sliderContainer.appendChild(sliderGroup);
             
-            // Create input for Researcher mode
             const input = document.createElement('input');
             input.type = 'number';
             input.name = key;
@@ -226,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         label: 'Importance',
                         data: [],
                         backgroundColor: (context) => {
-                            const gradient = context.chart.ctx.createLinearGradient(0, 0, context.chart.width, 0);
+                            const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, context.chart.height);
                             gradient.addColorStop(0, '#38bdf8');
                             gradient.addColorStop(1, '#8b5cf6');
                             return gradient;
@@ -256,21 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     },
                     scales: {
                         x: {
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
-                                drawBorder: false
-                            },
-                            ticks: {
-                                color: '#6b7a94',
-                                font: { size: 11 }
-                            }
+                            grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                            ticks: { color: '#6b7a94', font: { size: 11 } }
                         },
                         y: {
                             grid: { display: false },
-                            ticks: {
-                                color: '#b8c5d6',
-                                font: { size: 12, weight: '500' }
-                            }
+                            ticks: { color: '#b8c5d6', font: { size: 12, weight: '500' } }
                         }
                     },
                     animation: {
@@ -281,19 +269,19 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
-        // Update data
-        importanceChart.data.labels = importanceData.map(d => d.feature);
-        importanceChart.data.datasets[0].data = importanceData.map(d => d.value);
+        const chartLabels = importanceData.map(d => d.feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
+        const chartData = importanceData.map(d => d.value);
+
+        importanceChart.data.labels = chartLabels;
+        importanceChart.data.datasets[0].data = chartData;
         importanceChart.update('active');
     }
     
     // === EVENT LISTENERS ===
     
-    // Mode Switching
     modeExplorerBtn.onclick = () => {
         modeExplorerBtn.classList.add('active');
         modeResearcherBtn.classList.remove('active');
-        
         explorerView.classList.remove('hidden');
         researcherView.classList.add('hidden');
         explorerControls.classList.remove('hidden');
@@ -303,53 +291,59 @@ document.addEventListener('DOMContentLoaded', () => {
     modeResearcherBtn.onclick = () => {
         modeResearcherBtn.classList.add('active');
         modeExplorerBtn.classList.remove('active');
-        
         researcherView.classList.remove('hidden');
         explorerView.classList.add('hidden');
         researcherControls.classList.remove('hidden');
         explorerControls.classList.add('hidden');
     };
     
-    // Load Random Button
-    loadRandomBtn.onclick = () => {
+    loadRandomBtn.onclick = async () => {
         loadRandomBtn.disabled = true;
         loadRandomBtn.innerHTML = '<span class="loading"></span><span>Generating...</span>';
-        
-        const sliders = sliderContainer.querySelectorAll('input[type="range"]');
-        sliders.forEach(slider => {
-            const min = parseFloat(slider.min);
-            const max = parseFloat(slider.max);
-            const randomValue = Math.random() * (max - min) + min;
-            slider.value = randomValue;
-            slider.dispatchEvent(new Event('input'));
-        });
-        
-        setTimeout(() => {
-            loadRandomBtn.disabled = false;
-            loadRandomBtn.innerHTML = `
-                <span>Generate Random</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="23 4 23 10 17 10"></polyline>
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                </svg>
-            `;
-        }, 1000);
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/random_candidate`);
+            if (!response.ok) { throw new Error(`Network response was not ok: ${response.statusText}`); }
+            const randomParams = await response.json();
+
+            // *** CORRECTION: Use the standardized names to update the UI ***
+            for (const key in randomParams) {
+                const slider = sliderContainer.querySelector(`input[data-key="${key}"]`);
+                if (slider) {
+                    const newValue = parseFloat(randomParams[key]);
+                    slider.value = newValue;
+                    const unit = slider.getAttribute('data-unit') || '';
+                    document.getElementById(`${key}-val`).textContent = newValue.toFixed(2) + unit;
+                }
+            }
+            await getPrediction(randomParams);
+
+        } catch (error) {
+            console.error('Error loading random candidate:', error);
+            showNotification('Failed to load a random candidate.', 'error');
+        } finally {
+            setTimeout(() => {
+                loadRandomBtn.disabled = false;
+                loadRandomBtn.innerHTML = `
+                    <span>Generate Random</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                    </svg>
+                `;
+            }, 500);
+        }
     };
     
-    // Manual Classification
     classifyManualBtn.onclick = async (e) => {
         e.preventDefault();
-        
         const formData = new FormData(manualForm);
         const data = {};
         let isValid = true;
         
         for (let [key, value] of formData.entries()) {
             const numValue = parseFloat(value);
-            if (isNaN(numValue)) {
-                isValid = false;
-                break;
-            }
+            if (isNaN(numValue)) { isValid = false; break; }
             data[key] = numValue;
         }
         
@@ -358,7 +352,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Show loading state
         classifyManualBtn.disabled = true;
         classifyManualBtn.innerHTML = '<span class="loading"></span><span>Classifying...</span>';
         
@@ -368,19 +361,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
-            
             const result = await response.json();
-            
-            if (result.error) {
-                showNotification(result.error, 'error');
-                return;
-            }
-            
+            if (result.error) { throw new Error(result.error); }
             resultsTableContainer.innerHTML = createResultsTable([{...data, ...result}]);
             showNotification('Classification completed successfully', 'success');
         } catch (error) {
             console.error('Error classifying:', error);
-            showNotification('Classification failed', 'error');
+            showNotification(`Classification failed: ${error.message}`, 'error');
         } finally {
             classifyManualBtn.disabled = false;
             classifyManualBtn.innerHTML = `
@@ -393,7 +380,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // CSV File Upload
     fileInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -401,77 +387,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();
         formData.append('file', file);
         
-        // Show loading in results container
-        resultsTableContainer.innerHTML = `
-            <div class="empty-state">
-                <span class="loading" style="width: 40px; height: 40px; margin-bottom: 20px;"></span>
-                <p>Processing ${file.name}...</p>
-            </div>
-        `;
+        resultsTableContainer.innerHTML = `<div class="empty-state"><span class="loading" style="width: 40px; height: 40px; margin-bottom: 20px;"></span><p>Processing ${file.name}...</p></div>`;
         
         try {
-            const response = await fetch(`${API_BASE_URL}/predict_batch`, {
-                method: 'POST',
-                body: formData
-            });
-            
+            const response = await fetch(`${API_BASE_URL}/predict_batch`, { method: 'POST', body: formData });
             const results = await response.json();
             
             if (results.error) {
-                resultsTableContainer.innerHTML = `
-                    <div class="empty-state">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="15" y1="9" x2="9" y2="15"></line>
-                            <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                        <p>Error: ${results.error}</p>
-                    </div>
-                `;
+                resultsTableContainer.innerHTML = `<div class="empty-state"><p>Error: ${results.error}</p></div>`;
                 showNotification(results.error, 'error');
                 return;
             }
-            
             resultsTableContainer.innerHTML = createResultsTable(results);
             showNotification(`Successfully processed ${results.length} candidates`, 'success');
         } catch (error) {
             console.error('Error uploading file:', error);
-            resultsTableContainer.innerHTML = `
-                <div class="empty-state">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="15" y1="9" x2="9" y2="15"></line>
-                        <line x1="9" y1="9" x2="15" y2="15"></line>
-                    </svg>
-                    <p>An error occurred during file upload.</p>
-                </div>
-            `;
+            resultsTableContainer.innerHTML = `<div class="empty-state"><p>An error occurred during file upload.</p></div>`;
             showNotification('File upload failed', 'error');
         } finally {
-            // Reset file input
             fileInput.value = '';
         }
     };
     
-    // Drag and drop for file upload
     const uploadLabel = document.querySelector('.upload-label');
-    
-    uploadLabel.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadLabel.style.borderColor = 'var(--accent-blue)';
-        uploadLabel.style.background = 'var(--bg-light)';
-    });
-    
-    uploadLabel.addEventListener('dragleave', () => {
-        uploadLabel.style.borderColor = '';
-        uploadLabel.style.background = '';
-    });
-    
+    uploadLabel.addEventListener('dragover', (e) => { e.preventDefault(); uploadLabel.style.borderColor = 'var(--accent-blue)'; uploadLabel.style.background = 'var(--bg-light)'; });
+    uploadLabel.addEventListener('dragleave', () => { uploadLabel.style.borderColor = ''; uploadLabel.style.background = ''; });
     uploadLabel.addEventListener('drop', (e) => {
         e.preventDefault();
-        uploadLabel.style.borderColor = '';
-        uploadLabel.style.background = '';
-        
+        uploadLabel.style.borderColor = ''; uploadLabel.style.background = '';
         const file = e.dataTransfer.files[0];
         if (file && file.name.endsWith('.csv')) {
             fileInput.files = e.dataTransfer.files;
@@ -481,54 +424,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // === HELPER FUNCTIONS ===
-    
     function createResultsTable(data) {
-        if (!data || data.length === 0) {
-            return `
-                <div class="empty-state">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M9 11l3 3L22 4"></path>
-                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                    </svg>
-                    <p>No results to display</p>
-                </div>
-            `;
-        }
+        if (!data || data.length === 0) { return `<div class="empty-state">...</div>`; }
         
-        const headers = ['prediction', 'probability', 'koi_prad', 'koi_period', 'koi_depth'];
-        const headerLabels = {
-            'prediction': 'Classification',
-            'probability': 'Confidence',
-            'koi_prad': 'Radius (R⊕)',
-            'koi_period': 'Period (days)',
-            'koi_depth': 'Depth (ppm)'
-        };
+        const headers = ['prediction', 'probability', 'planet_radius', 'orbital_period', 'transit_depth'];
+        const headerLabels = { 'prediction': 'Classification', 'probability': 'Confidence', 'planet_radius': 'Radius (R⊕)', 'orbital_period': 'Period (days)', 'transit_depth': 'Depth (ppm)' };
         
         let table = '<table><thead><tr>';
-        headers.forEach(h => {
-            table += `<th>${headerLabels[h] || h}</th>`;
-        });
+        headers.forEach(h => { table += `<th>${headerLabels[h] || h}</th>`; });
         table += '</tr></thead><tbody>';
         
         data.forEach(row => {
             table += '<tr>';
             headers.forEach(h => {
                 let val = row[h];
-                let cellClass = '';
-                
                 if (h === 'prediction') {
-                    // Add color coding for predictions
-                    if (val === 'CONFIRMED') cellClass = 'text-success';
-                    else if (val === 'FALSE POSITIVE') cellClass = 'text-error';
-                    else cellClass = 'text-warning';
+                    let cellClass = val === 'CONFIRMED' ? 'text-success' : val === 'FALSE POSITIVE' ? 'text-error' : 'text-warning';
                     table += `<td class="${cellClass}"><strong>${val}</strong></td>`;
                 } else if (h === 'probability') {
-                    const percent = (val * 100).toFixed(1);
-                    table += `<td><strong>${percent}%</strong></td>`;
+                    table += `<td><strong>${(val * 100).toFixed(1)}%</strong></td>`;
                 } else {
-                    if (typeof val === 'number') val = val.toFixed(2);
-                    table += `<td>${val}</td>`;
+                    table += `<td>${(typeof val === 'number') ? val.toFixed(2) : val}</td>`;
                 }
             });
             table += '</tr>';
@@ -536,81 +452,38 @@ document.addEventListener('DOMContentLoaded', () => {
         
         table += '</tbody></table>';
         
-        // Add summary statistics
         const summary = `
             <div style="margin-top: 20px; padding: 15px; background: var(--bg-lighter); border-radius: 10px; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
-                <div style="text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">Total Candidates</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-blue);">${data.length}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">Confirmed</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">${data.filter(r => r.prediction === 'CONFIRMED').length}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">Candidates</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);">${data.filter(r => r.prediction === 'CANDIDATE').length}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 0.85rem; color: var(--text-muted);">False Positives</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--error);">${data.filter(r => r.prediction === 'FALSE POSITIVE').length}</div>
-                </div>
-            </div>
-        `;
+                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">Total</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-blue);">${data.length}</div></div>
+                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">Confirmed</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">${data.filter(r => r.prediction === 'CONFIRMED').length}</div></div>
+                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">Candidates</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);">${data.filter(r => r.prediction === 'CANDIDATE').length}</div></div>
+                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">False Positives</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--error);">${data.filter(r => r.prediction === 'FALSE POSITIVE').length}</div></div>
+            </div>`;
         
         return table + summary;
     }
     
-    // Add some CSS dynamically for text colors
     const style = document.createElement('style');
-    style.textContent = `
-        .text-success { color: var(--success) !important; }
-        .text-error { color: var(--error) !important; }
-        .text-warning { color: var(--warning) !important; }
-    `;
+    style.textContent = `.text-success { color: var(--success) !important; } .text-error { color: var(--error) !important; } .text-warning { color: var(--warning) !important; }`;
     document.head.appendChild(style);
     
-    // === KEYBOARD SHORTCUTS ===
     document.addEventListener('keydown', (e) => {
-        // Ctrl/Cmd + 1: Switch to Explorer Mode
-        if ((e.ctrlKey || e.metaKey) && e.key === '1') {
-            e.preventDefault();
-            modeExplorerBtn.click();
-        }
-        
-        // Ctrl/Cmd + 2: Switch to Researcher Mode
-        if ((e.ctrlKey || e.metaKey) && e.key === '2') {
-            e.preventDefault();
-            modeResearcherBtn.click();
-        }
-        
-        // Ctrl/Cmd + R: Load Random (in Explorer mode)
-        if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !explorerView.classList.contains('hidden')) {
-            e.preventDefault();
-            loadRandomBtn.click();
-        }
+        if ((e.ctrlKey || e.metaKey) && e.key === '1') { e.preventDefault(); modeExplorerBtn.click(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === '2') { e.preventDefault(); modeResearcherBtn.click(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !explorerView.classList.contains('hidden')) { e.preventDefault(); loadRandomBtn.click(); }
     });
     
     // === INITIALIZATION ===
-    
-    // Create sliders and form inputs
     createSliders();
-    
-    // Fetch initial model stats
     fetchModelStats();
-    
-    // Get initial prediction with default values
     getPrediction(currentParams);
     
-    // Add welcome animation
     setTimeout(() => {
-        const cards = document.querySelectorAll('.glass-card');
-        cards.forEach((card, index) => {
+        document.querySelectorAll('.glass-card').forEach((card, index) => {
             card.style.animationDelay = `${index * 0.1}s`;
         });
     }, 100);
     
-    // Log initialization complete
     console.log('%c🚀 Exo-Explorer Dashboard Initialized', 'color: #38bdf8; font-size: 16px; font-weight: bold;');
     console.log('%c⌨️  Keyboard Shortcuts:', 'color: #8b5cf6; font-weight: bold;');
     console.log('  Ctrl/Cmd + 1: Explorer Mode');
