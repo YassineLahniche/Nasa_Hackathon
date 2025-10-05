@@ -2,6 +2,11 @@
 
 Exo-Explorer is a NASA Space Apps hackathon project that combines a LightGBM-based classifier with an interactive web dashboard to explore exoplanet candidates from the Kepler, K2, and TESS missions. The repository includes the full machine-learning pipeline, a Flask REST API that serves predictions and model telemetry, and a rich frontend experience for both exploratory and batch analysis.
 
+
+## Demo
+[▶️ Watch the demo](https://drive.google.com/file/d/1S0j6O8jIrNVv2cKfx6UjG3VHWHf5qk2U/view?usp=sharing)
+
+
 ## Repository Layout
 
 - `backend/` – Flask API, model training pipeline, model artifacts, and CSV datasets used for inference
