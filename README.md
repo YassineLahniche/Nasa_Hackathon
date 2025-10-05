@@ -58,7 +58,7 @@ CORS is enabled via `flask-cors`, so the frontend can run from any origin (local
 ## Frontend Application
 
 - **Explorer mode** – Slider-controlled parameter tuning with live predictions, random-candidate generation against Kepler data, confidence animations, and a feature-importance chart.
-- **Researcher mode** – Manual numeric form, CSV upload workflow (awaiting backend batch support), and results table with quick statistics on confirmed/candidate/false-positive counts.
+- **Researcher mode** – Manual numeric form, CSV upload workflow, and results table with quick statistics on confirmed/candidate/false-positive counts.
 - **Notifications & shortcuts** – Lightweight toast-style console notifications plus keyboard shortcuts for mode toggles and random sampling (`Ctrl/Cmd + 1`, `Ctrl/Cmd + 2`, `Ctrl/Cmd + R`).
 - **Configurable backend** – `API_BASE_URL` in `frontend/script.js` centralises the REST endpoint so deployments can point to remote servers without code changes.
 

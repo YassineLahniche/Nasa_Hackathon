@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +9,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <!-- Animated Background -->
     <div class="stars-bg">
@@ -17,7 +21,7 @@
         <div class="stars2"></div>
         <div class="stars3"></div>
     </div>
-    
+
     <!-- Gradient Orbs -->
     <div class="gradient-orb orb-1"></div>
     <div class="gradient-orb orb-2"></div>
@@ -29,9 +33,11 @@
             <div class="logo-container">
                 <div class="logo-icon">
                     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                        <circle cx="50" cy="50" r="20" fill="url(#planet-gradient)" class="planet-core"/>
-                        <circle cx="50" cy="50" r="30" fill="none" stroke="url(#ring-gradient)" stroke-width="2" opacity="0.6" class="planet-ring"/>
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#ring-gradient)" stroke-width="1" opacity="0.3" class="planet-ring-outer"/>
+                        <circle cx="50" cy="50" r="20" fill="url(#planet-gradient)" class="planet-core" />
+                        <circle cx="50" cy="50" r="30" fill="none" stroke="url(#ring-gradient)" stroke-width="2"
+                            opacity="0.6" class="planet-ring" />
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#ring-gradient)" stroke-width="1"
+                            opacity="0.3" class="planet-ring-outer" />
                         <defs>
                             <linearGradient id="planet-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
@@ -46,12 +52,12 @@
                 </div>
                 <div>
                     <h1 class="glitch-text">EXO-EXPLORER</h1>
-                    <p class="subtitle">Neural Exoplanet Classification System</p>
+                    <p class="subtitle">Exoplanet Classification System</p>
                 </div>
             </div>
             <div class="status-indicator">
                 <span class="status-dot"></span>
-                <span>System Online</span>
+                <span>M5 Horizon</span>
             </div>
         </header>
 
@@ -61,7 +67,8 @@
                 <div class="glass-card mode-card">
                     <div class="card-header">
                         <h3>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <path d="M12 6v6l4 2"></path>
                             </svg>
@@ -84,7 +91,8 @@
                 <div class="glass-card stats-card">
                     <div class="card-header">
                         <h3>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                             </svg>
                             Model Performance
@@ -102,15 +110,19 @@
                 <div id="explorer-controls" class="glass-card control-card">
                     <div class="card-header">
                         <h3>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                </path>
                             </svg>
                             Load Candidate
                         </h3>
                     </div>
                     <button id="load-random-btn" class="action-btn primary">
                         <span>Generate Random</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
                             <polyline points="23 4 23 10 17 10"></polyline>
                             <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
                         </svg>
@@ -121,7 +133,8 @@
                 <div id="researcher-controls" class="glass-card control-card hidden">
                     <div class="card-header">
                         <h3>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
                                 <polyline points="13 2 13 9 20 9"></polyline>
                             </svg>
@@ -131,7 +144,8 @@
                     <div class="upload-zone">
                         <input type="file" id="csv-file-input" accept=".csv" hidden>
                         <label for="csv-file-input" class="upload-label">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="17 8 12 3 7 8"></polyline>
                                 <line x1="12" y1="3" x2="12" y2="15"></line>
@@ -151,7 +165,8 @@
                         <div class="prediction-header">
                             <h2>Classification Result</h2>
                             <div class="confidence-badge">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
                                 </svg>
@@ -163,7 +178,8 @@
                         </div>
                         <div class="explanation-container">
                             <div class="explanation-icon"></div>
-                            <p id="explanation-text">Adjust parameters or load a candidate to see AI prediction analysis.</p>
+                            <p id="explanation-text">Adjust parameters or load a candidate to see AI prediction
+                                analysis.</p>
                         </div>
                     </div>
 
@@ -171,9 +187,11 @@
                     <div class="glass-card parameters-card">
                         <div class="card-header">
                             <h3>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m-6 6l-4.2 4.2m18.4 0l-4.2-4.2m-6-6L1 1"></path>
+                                    <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m-6 6l-4.2 4.2m18.4 0l-4.2-4.2m-6-6L1 1">
+                                    </path>
                                 </svg>
                                 Interactive Parameters
                             </h3>
@@ -186,7 +204,8 @@
                     <div class="glass-card chart-card">
                         <div class="card-header">
                             <h3>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <line x1="18" y1="20" x2="18" y2="10"></line>
                                     <line x1="12" y1="20" x2="12" y2="4"></line>
                                     <line x1="6" y1="20" x2="6" y2="14"></line>
@@ -206,7 +225,8 @@
                     <div class="glass-card manual-entry-card">
                         <div class="card-header">
                             <h3>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
@@ -216,7 +236,8 @@
                         <form id="manual-entry-form" class="manual-form"></form>
                         <button id="classify-manual-btn" class="action-btn primary full-width">
                             <span>Classify Candidate</span>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
                                 <polyline points="9 11 12 14 22 4"></polyline>
                                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                             </svg>
@@ -227,7 +248,8 @@
                     <div class="glass-card results-card">
                         <div class="card-header">
                             <h3>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                     <polyline points="14 2 14 8 20 8"></polyline>
                                     <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -239,7 +261,8 @@
                         </div>
                         <div id="results-table-container" class="results-table-wrapper">
                             <div class="empty-state">
-                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="1.5">
                                     <path d="M9 11l3 3L22 4"></path>
                                     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
                                 </svg>
@@ -254,4 +277,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
