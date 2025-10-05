@@ -1,6 +1,8 @@
+# backend/requirements.txt
 flask
 flask-cors
 pandas
 numpy
 scikit-learn
 lightgbm
+optuna

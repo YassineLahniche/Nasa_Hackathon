@@ -5,6 +5,7 @@ import numpy as np
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import os
 import joblib  # Switched to joblib for .pkl files
 import json
@@ -19,7 +20,7 @@ DATA_PATHS = {
 MODEL_PATH = 'models/lightgbm_model.pkl'
 SCALER_PATH = 'models/scaler.pkl'
 FEATURES_PATH = 'models/features.json'
-
+STATS_PATH = 'models/model_stats.json'
 
 # --- DATA CLEANING & STANDARDIZATION (Your Provided Functions) ---
 
@@ -153,22 +154,37 @@ def run_training_pipeline(hyperparameters=None):
     model = lgb.LGBMClassifier(**hyperparameters)
     model.fit(X_train_scaled, y_train, eval_set=[(X_test_scaled, y_test)], callbacks=[lgb.early_stopping(100, verbose=False)])
 
-    # 7. Evaluate and Save
-    accuracy = model.score(X_test_scaled, y_test)
-    os.makedirs('models', exist_ok=True) # Ensure models directory exists
+     # --- Calculate All Performance Metrics ---
+    print("\nCalculating performance metrics...")
+    y_pred = model.predict(X_test_scaled)
     
+    accuracy = accuracy_score(y_test, y_pred) * 100
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+    
+    stats = {
+        'accuracy': round(accuracy, 2),
+        'f1Score': round(f1, 2),
+        'precision': round(precision, 2),
+        'recall': round(recall, 2),
+        'totalCandidates': len(y) # Total candidates used for training/testing
+    }
+    print(f"Metrics calculated: {stats}")
+
+    # --- Save All Artifacts ---
+    os.makedirs('models', exist_ok=True)
     joblib.dump(model, MODEL_PATH)
     joblib.dump(scaler, SCALER_PATH)
     with open(FEATURES_PATH, 'w') as f:
         json.dump(final_features, f)
+    with open(STATS_PATH, 'w') as f:
+        json.dump(stats, f) # Save the new stats file
         
-    print(f"\n--- Pipeline Finished. Test Accuracy: {accuracy:.4f} ---")
-    print(f"✅ Model saved to: {MODEL_PATH}")
-    print(f"✅ Scaler saved to: {SCALER_PATH}")
-    print(f"✅ Features list saved to: {FEATURES_PATH}")
+    print(f"\n--- Pipeline Finished. Test Accuracy: {stats['accuracy']}% ---")
+    print(f"✅ All artifacts, including model_stats.json, have been saved.")
     
-    return {'accuracy': accuracy, 'features_used': final_features}
+    return stats
 
-# Run this script directly from your terminal to perform a training run
 if __name__ == '__main__':
     run_training_pipeline()

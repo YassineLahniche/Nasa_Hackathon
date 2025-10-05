@@ -1,5 +1,5 @@
 // Enhanced Exo-Explorer Dashboard Script
-// Premium Edition with Smooth Animations (Corrected & Final)
+// Premium Edition with Smooth Animations (Final Version)
 
 document.addEventListener('DOMContentLoaded', () => {
     // === CONFIGURATION ===
@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // === UTILITY FUNCTIONS ===
     const showNotification = (message, type = 'info') => {
-        // Simple notification system (you can enhance this)
+        // Simple console notification for now. Can be replaced with a UI element.
         console.log(`[${type.toUpperCase()}] ${message}`);
     };
     
@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchModelStats() {
         try {
             const response = await fetch(`${API_BASE_URL}/model_stats`);
+            if (!response.ok) throw new Error('Failed to fetch stats');
             const stats = await response.json();
             
             const container = document.getElementById('model-stats-container');
@@ -87,14 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(params)
             });
             
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.statusText}`);
-            }
-
+            if (!response.ok) { throw new Error(`API Error: ${response.statusText}`); }
             const result = await response.json();
-            if (result.error) {
-                throw new Error(result.error);
-            }
+            if (result.error) { throw new Error(result.error); }
             
             setTimeout(() => {
                 updateExplorerUI(result);
@@ -110,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // === UI UPDATE FUNCTIONS ===
     function updateExplorerUI(result) {
         const resultElement = predictionOutput;
-        
         resultElement.querySelector('.prediction-text').textContent = result.prediction;
         resultElement.setAttribute('data-prediction', result.prediction);
         
@@ -125,15 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         resultElement.style.animation = 'none';
-        setTimeout(() => {
-            resultElement.style.animation = '';
-        }, 10);
+        setTimeout(() => { resultElement.style.animation = ''; }, 10);
     }
     
     function generateExplanation(result) {
         const confidence = (result.probability * 100).toFixed(1);
         const prediction = result.prediction;
-        
         let explanation = `The AI model predicts this candidate is a ${prediction} with ${confidence}% confidence. `;
         
         if (prediction === 'CONFIRMED') {
@@ -143,21 +135,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             explanation += 'This candidate shows promising features but requires further validation.';
         }
-        
         return explanation;
     }
     
     function createSliders() {
-        // *** KEY CORRECTION: Using standardized model feature names ***
         const sliderDefs = {
             'orbital_period': { label: 'Orbital Period (days)', min: 0.1, max: 200, value: 10, unit: 'd' },
-            'transit_depth': { label: 'Transit Depth (ppm)', min: 1, max: 20000, value: 500, unit: '' },
-            'transit_duration': { label: 'Transit Duration (days)', min: 0.01, max: 0.5, value: 0.125, unit: 'd' },
-            'planet_radius': { label: 'Planetary Radius (R⊕)', min: 0.1, max: 25, value: 2, unit: 'R⊕' },
-            'insolation_flux': { label: 'Insolation Flux (F⊕)', min: 0.1, max: 1000, value: 10, unit: 'F⊕' },
-            'stellar_temp': { label: 'Stellar Temp (K)', min: 2000, max: 10000, value: 5500, unit: 'K' },
-            'stellar_radius': { label: 'Stellar Radius (R☉)', min: 0.1, max: 20, value: 1, unit: 'R☉' },
-            'stellar_log_g': { label: 'Stellar Gravity (log g)', min: 1, max: 6, value: 4.5, unit: '' }
+            'transit_duration': { label: 'Transit Duration (hours)', min: 0.1, max: 100, value: 0.125, unit: 'h' },
+            'insolation_flux': { label: 'Insolation Flux (F⊕)', min: 0.1, max: 3000, value: 10, unit: 'F⊕' },
+            'stellar_radius': { label: 'Stellar Radius (R☉)', min: 0.1, max: 20, value: 1, unit: 'R☉' }
         };
         
         sliderContainer.innerHTML = '';
@@ -171,16 +157,10 @@ document.addEventListener('DOMContentLoaded', () => {
             sliderGroup.className = 'slider-group';
             
             const label = document.createElement('label');
-            label.innerHTML = `
-                <span>${def.label}</span>
-                <span id="${key}-val">${def.value.toFixed(2)}${def.unit}</span>
-            `;
+            label.innerHTML = `<span>${def.label}</span><span id="${key}-val">${def.value.toFixed(2)}${def.unit}</span>`;
             
             const slider = document.createElement('input');
-            slider.type = 'range';
-            slider.min = def.min;
-            slider.max = def.max;
-            slider.value = def.value;
+            slider.type = 'range'; slider.min = def.min; slider.max = def.max; slider.value = def.value;
             slider.step = (def.max - def.min) / 200;
             slider.setAttribute('data-key', key);
             slider.setAttribute('data-unit', def.unit || '');
@@ -190,11 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const val = parseFloat(e.target.value);
                 currentParams[key] = val;
                 document.getElementById(`${key}-val`).textContent = val.toFixed(2) + def.unit;
-                
                 clearTimeout(predictionTimeout);
-                predictionTimeout = setTimeout(() => {
-                    getPrediction(currentParams);
-                }, 300);
+                predictionTimeout = setTimeout(() => getPrediction(currentParams), 300);
             };
             
             sliderGroup.appendChild(label);
@@ -202,78 +179,49 @@ document.addEventListener('DOMContentLoaded', () => {
             sliderContainer.appendChild(sliderGroup);
             
             const input = document.createElement('input');
-            input.type = 'number';
-            input.name = key;
-            input.placeholder = def.label;
-            input.step = 'any';
-            input.required = true;
+            input.type = 'number'; input.name = key; input.placeholder = def.label;
+            input.step = 'any'; input.required = true;
             manualForm.appendChild(input);
         }
     }
     
     function updateChart(importanceData) {
-        const ctx = document.getElementById('importance-chart');
-        
+        const ctx = document.getElementById('importance-chart').getContext('2d');
         if (!importanceChart) {
             importanceChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Importance',
-                        data: [],
+                        label: 'Importance', data: [],
                         backgroundColor: (context) => {
                             const gradient = context.chart.ctx.createLinearGradient(0, 0, 0, context.chart.height);
-                            gradient.addColorStop(0, '#38bdf8');
-                            gradient.addColorStop(1, '#8b5cf6');
+                            gradient.addColorStop(0, '#38bdf8'); gradient.addColorStop(1, '#8b5cf6');
                             return gradient;
                         },
-                        borderRadius: 8,
-                        borderSkipped: false,
+                        borderRadius: 8, borderSkipped: false
                     }]
                 },
                 options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: 'rgba(26, 31, 53, 0.95)',
-                            titleColor: '#fff',
-                            bodyColor: '#b8c5d6',
-                            borderColor: 'rgba(56, 189, 248, 0.5)',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: false,
-                            callbacks: {
-                                label: (context) => `Importance: ${context.parsed.x.toFixed(4)}`
-                            }
+                            backgroundColor: 'rgba(26, 31, 53, 0.95)', titleColor: '#fff', bodyColor: '#b8c5d6',
+                            borderColor: 'rgba(56, 189, 248, 0.5)', borderWidth: 1, padding: 12, displayColors: false,
+                            callbacks: { label: (context) => `Importance: ${context.parsed.x.toFixed(4)}` }
                         }
                     },
                     scales: {
-                        x: {
-                            grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
-                            ticks: { color: '#6b7a94', font: { size: 11 } }
-                        },
-                        y: {
-                            grid: { display: false },
-                            ticks: { color: '#b8c5d6', font: { size: 12, weight: '500' } }
-                        }
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#6b7a94' } },
+                        y: { grid: { display: false }, ticks: { color: '#b8c5d6' } }
                     },
-                    animation: {
-                        duration: 750,
-                        easing: 'easeInOutQuart'
-                    }
+                    animation: { duration: 750, easing: 'easeInOutQuart' }
                 }
             });
         }
-        
-        const chartLabels = importanceData.map(d => d.feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
-        const chartData = importanceData.map(d => d.value);
-
-        importanceChart.data.labels = chartLabels;
-        importanceChart.data.datasets[0].data = chartData;
+        importanceChart.data.labels = importanceData.map(d => d.feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
+        importanceChart.data.datasets[0].data = importanceData.map(d => d.value);
         importanceChart.update('active');
     }
     
@@ -300,13 +248,11 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRandomBtn.onclick = async () => {
         loadRandomBtn.disabled = true;
         loadRandomBtn.innerHTML = '<span class="loading"></span><span>Generating...</span>';
-
         try {
             const response = await fetch(`${API_BASE_URL}/random_candidate`);
-            if (!response.ok) { throw new Error(`Network response was not ok: ${response.statusText}`); }
+            if (!response.ok) { throw new Error('Network error'); }
             const randomParams = await response.json();
 
-            // *** CORRECTION: Use the standardized names to update the UI ***
             for (const key in randomParams) {
                 const slider = sliderContainer.querySelector(`input[data-key="${key}"]`);
                 if (slider) {
@@ -314,23 +260,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     slider.value = newValue;
                     const unit = slider.getAttribute('data-unit') || '';
                     document.getElementById(`${key}-val`).textContent = newValue.toFixed(2) + unit;
+                    currentParams[key] = newValue; // Update current state
                 }
             }
-            await getPrediction(randomParams);
-
+            await getPrediction(currentParams);
         } catch (error) {
             console.error('Error loading random candidate:', error);
             showNotification('Failed to load a random candidate.', 'error');
         } finally {
             setTimeout(() => {
                 loadRandomBtn.disabled = false;
-                loadRandomBtn.innerHTML = `
-                    <span>Generate Random</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 4 23 10 17 10"></polyline>
-                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                    </svg>
-                `;
+                loadRandomBtn.innerHTML = `<span>Generate Random</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>`;
             }, 500);
         }
     };
@@ -356,11 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
         classifyManualBtn.innerHTML = '<span class="loading"></span><span>Classifying...</span>';
         
         try {
-            const response = await fetch(`${API_BASE_URL}/predict`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+            const response = await fetch(`${API_BASE_URL}/predict`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             const result = await response.json();
             if (result.error) { throw new Error(result.error); }
             resultsTableContainer.innerHTML = createResultsTable([{...data, ...result}]);
@@ -370,13 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification(`Classification failed: ${error.message}`, 'error');
         } finally {
             classifyManualBtn.disabled = false;
-            classifyManualBtn.innerHTML = `
-                <span>Classify Candidate</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="9 11 12 14 22 4"></polyline>
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-                </svg>
-            `;
+            classifyManualBtn.innerHTML = `<span>Classify Candidate</span><svg width="16" height="16" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
         }
     };
     
@@ -386,7 +316,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const formData = new FormData();
         formData.append('file', file);
-        
         resultsTableContainer.innerHTML = `<div class="empty-state"><span class="loading" style="width: 40px; height: 40px; margin-bottom: 20px;"></span><p>Processing ${file.name}...</p></div>`;
         
         try {
@@ -410,11 +339,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const uploadLabel = document.querySelector('.upload-label');
-    uploadLabel.addEventListener('dragover', (e) => { e.preventDefault(); uploadLabel.style.borderColor = 'var(--accent-blue)'; uploadLabel.style.background = 'var(--bg-light)'; });
-    uploadLabel.addEventListener('dragleave', () => { uploadLabel.style.borderColor = ''; uploadLabel.style.background = ''; });
+    uploadLabel.addEventListener('dragover', (e) => { e.preventDefault(); uploadLabel.classList.add('active'); });
+    uploadLabel.addEventListener('dragleave', () => { uploadLabel.classList.remove('active'); });
     uploadLabel.addEventListener('drop', (e) => {
         e.preventDefault();
-        uploadLabel.style.borderColor = ''; uploadLabel.style.background = '';
+        uploadLabel.classList.remove('active');
         const file = e.dataTransfer.files[0];
         if (file && file.name.endsWith('.csv')) {
             fileInput.files = e.dataTransfer.files;
@@ -425,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     function createResultsTable(data) {
-        if (!data || data.length === 0) { return `<div class="empty-state">...</div>`; }
+        if (!data || data.length === 0) { return `<div class="empty-state"><p>No results to display</p></div>`; }
         
         const headers = ['prediction', 'probability', 'planet_radius', 'orbital_period', 'transit_depth'];
         const headerLabels = { 'prediction': 'Classification', 'probability': 'Confidence', 'planet_radius': 'Radius (R⊕)', 'orbital_period': 'Period (days)', 'transit_depth': 'Depth (ppm)' };
@@ -453,18 +382,25 @@ document.addEventListener('DOMContentLoaded', () => {
         table += '</tbody></table>';
         
         const summary = `
-            <div style="margin-top: 20px; padding: 15px; background: var(--bg-lighter); border-radius: 10px; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px;">
-                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">Total</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--accent-blue);">${data.length}</div></div>
-                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">Confirmed</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">${data.filter(r => r.prediction === 'CONFIRMED').length}</div></div>
-                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">Candidates</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--warning);">${data.filter(r => r.prediction === 'CANDIDATE').length}</div></div>
-                <div style="text-align: center;"><div style="font-size: 0.85rem; color: var(--text-muted);">False Positives</div><div style="font-size: 1.5rem; font-weight: 700; color: var(--error);">${data.filter(r => r.prediction === 'FALSE POSITIVE').length}</div></div>
+            <div class="results-summary">
+                <div><span>Total</span><strong class="text-blue">${data.length}</strong></div>
+                <div><span>Confirmed</span><strong class="text-success">${data.filter(r => r.prediction === 'CONFIRMED').length}</strong></div>
+                <div><span>Candidates</span><strong class="text-warning">${data.filter(r => r.prediction === 'CANDIDATE').length}</strong></div>
+                <div><span>False Positives</span><strong class="text-error">${data.filter(r => r.prediction === 'FALSE POSITIVE').length}</strong></div>
             </div>`;
         
         return table + summary;
     }
     
     const style = document.createElement('style');
-    style.textContent = `.text-success { color: var(--success) !important; } .text-error { color: var(--error) !important; } .text-warning { color: var(--warning) !important; }`;
+    style.textContent = `
+        .text-success { color: var(--success) !important; } .text-error { color: var(--error) !important; } .text-warning { color: var(--warning) !important; } .text-blue { color: var(--accent-blue) !important; }
+        .upload-label.active { border-color: var(--accent-blue); background: var(--bg-light); }
+        .results-summary { margin-top: 20px; padding: 15px; background: var(--bg-lighter); border-radius: 10px; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 15px; }
+        .results-summary > div { text-align: center; }
+        .results-summary > div > span { font-size: 0.85rem; color: var(--text-muted); display: block; }
+        .results-summary > div > strong { font-size: 1.5rem; font-weight: 700; }
+    `;
     document.head.appendChild(style);
     
     document.addEventListener('keydown', (e) => {

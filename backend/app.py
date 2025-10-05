@@ -23,6 +23,7 @@ MODEL_PATH = 'models/lightgbm_model.pkl'
 SCALER_PATH = 'models/scaler.pkl'
 FEATURES_PATH = 'models/features.json'
 KEPLER_DATA_PATH = 'data/koi.csv'
+STATS_PATH = 'models/model_stats.json'
 
 # --- GLOBAL OBJECTS ---
 app = Flask(__name__)
@@ -30,15 +31,15 @@ CORS(app)
 model, scaler, features, kepler_df = None, None, None, None
 model_lock = threading.Lock()
 
-# --- LOADING FUNCTION ---
 def load_artifacts():
-    """Loads all necessary artifacts: model, scaler, features list, and data."""
-    global model, scaler, features, kepler_df
+    """Loads all necessary artifacts: model, scaler, features, stats, and data."""
+    global model, scaler, features, kepler_df, model_stats # Added model_stats here
     print("Attempting to load all artifacts...")
     artifacts_loaded = True
     
     with model_lock:
         try:
+            # 1. Load Model
             if os.path.exists(MODEL_PATH):
                 model = joblib.load(MODEL_PATH)
                 print(f"✅ Model loaded from {MODEL_PATH}")
@@ -46,6 +47,7 @@ def load_artifacts():
                 print(f"⚠️ Model not found at {MODEL_PATH}")
                 artifacts_loaded = False
             
+            # 2. Load Scaler
             if os.path.exists(SCALER_PATH):
                 scaler = joblib.load(SCALER_PATH)
                 print(f"✅ Scaler loaded from {SCALER_PATH}")
@@ -53,20 +55,32 @@ def load_artifacts():
                 print(f"⚠️ Scaler not found at {SCALER_PATH}")
                 artifacts_loaded = False
 
+            # 3. Load Features List
             if os.path.exists(FEATURES_PATH):
                 with open(FEATURES_PATH, 'r') as f:
-                    features = json.load(f) # This line requires 'import json'
+                    features = json.load(f)
                 print(f"✅ Features list loaded from {FEATURES_PATH}")
             else:
                 print(f"⚠️ Features list not found at {FEATURES_PATH}")
                 artifacts_loaded = False
+            
+            # 4. NEW: Load Model Stats
+            if os.path.exists(STATS_PATH):
+                with open(STATS_PATH, 'r') as f:
+                    model_stats = json.load(f)
+                print(f"✅ Model stats loaded from {STATS_PATH}")
+            else:
+                print(f"⚠️ Model stats not found at {STATS_PATH}")
+                # We can still run, but the stats endpoint will have no data
+                model_stats = None # Explicitly set to None if not found
 
+            # 5. Load Kepler Data for Random Candidate Feature
             if os.path.exists(KEPLER_DATA_PATH):
                 kepler_df = pd.read_csv(KEPLER_DATA_PATH, comment='#')
                 print(f"✅ Kepler data for random candidates loaded from {KEPLER_DATA_PATH}")
             else:
                 print(f"⚠️ Kepler data not found at {KEPLER_DATA_PATH}")
-                kepler_df = pd.DataFrame()
+                kepler_df = pd.DataFrame() # Prevents crashing if file is missing
 
         except Exception as e:
             print(f"❌ CRITICAL ERROR during artifact loading: {e}")
@@ -84,22 +98,39 @@ def load_artifacts():
 
 @app.route('/model_stats', methods=['GET'])
 def get_model_stats():
-    if kepler_df is None: return jsonify({'error': 'Kepler data not loaded'}), 500
-    return jsonify({'accuracy': 98.2, 'f1Score': 0.98, 'precision': 0.99, 'recall': 0.97, 'totalCandidates': len(kepler_df)})
+    """Serves the real model statistics loaded from the JSON file."""
+    if model_stats:
+        return jsonify(model_stats)
+    else:
+        return jsonify({'error': 'Model statistics not available'}), 500
+
+# File: backend/app.py (Updated /random_candidate endpoint)
 
 @app.route('/random_candidate', methods=['GET'])
 def get_random_candidate():
+    """Selects a random candidate from the Kepler dataset pool with standardized names."""
     if kepler_df is None or kepler_df.empty or features is None:
         return jsonify({'error': 'Server data not fully loaded'}), 500
     
+    # *** KEY CHANGE: Only map the features the model actually uses ***
     column_mapping = {
-        'koi_period': 'orbital_period', 'koi_duration': 'transit_duration', 'koi_depth': 'transit_depth',
-        'koi_prad': 'planet_radius', 'koi_insol': 'insolation_flux', 'koi_steff': 'stellar_temp',
-        'koi_srad': 'stellar_radius', 'koi_slogg': 'stellar_log_g'
+        'koi_period': 'orbital_period', 
+        'koi_duration': 'transit_duration', 
+        'koi_depth': 'transit_depth',
+        'koi_prad': 'planet_radius', 
+        'koi_insol': 'insolation_flux',
+        'koi_srad': 'stellar_radius'
     }
+    
+    # Filter for columns that exist in the dataframe and are needed by the model
     valid_raw_cols = [raw_col for raw_col, std_col in column_mapping.items() if std_col in features and raw_col in kepler_df.columns]
+    
+    # Get a random row with no missing values in these key columns
     random_row_raw = kepler_df[valid_raw_cols].dropna().sample(1).iloc[0]
+    
+    # Create the response with standardized names
     random_candidate_std = {column_mapping[raw_col]: val for raw_col, val in random_row_raw.items()}
+    
     return jsonify(random_candidate_std)
 
 @app.route('/predict', methods=['POST'])
@@ -116,7 +147,7 @@ def predict_single():
             probability = model.predict_proba(scaled_data)[0][1]
             feature_importances = model.feature_importances_
         
-        prediction_class = 'CONFIRMED' if probability > 0.8 else ('CANDIDATE' if probability > 0.5 else 'FALSE POSITIVE')
+        prediction_class = 'CONFIRMED' if probability > 0.6 else ('CANDIDATE' if probability > 0.4 else 'FALSE POSITIVE')
         importance_data = [{'feature': feat, 'value': float(imp)} for feat, imp in zip(features, feature_importances)]
 
         return jsonify({'prediction': prediction_class, 'probability': float(probability), 'featureImportance': sorted(importance_data, key=lambda x: x['value'], reverse=True)})
