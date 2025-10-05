@@ -1,15 +1,11 @@
-// Enhanced Exo-Explorer Dashboard Script
-// Premium Edition with Smooth Animations (Final Version)
-
+// Boot the dashboard once the DOM is ready so all hooks resolve.
 document.addEventListener('DOMContentLoaded', () => {
-    // === CONFIGURATION ===
     const API_BASE_URL = 'http://127.0.0.1:5001';
-    
-    // === STATE ===
+
     let currentParams = {};
     let importanceChart = null;
-    
-    // === DOM ELEMENTS ===
+
+    // Cache DOM references shared across Explorer and Researcher modes.
     const modeExplorerBtn = document.getElementById('mode-explorer');
     const modeResearcherBtn = document.getElementById('mode-researcher');
     const explorerView = document.getElementById('explorer-view');
@@ -25,13 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const classifyManualBtn = document.getElementById('classify-manual-btn');
     const fileInput = document.getElementById('csv-file-input');
     const resultsTableContainer = document.getElementById('results-table-container');
-    
-    // === UTILITY FUNCTIONS ===
+
     const showNotification = (message, type = 'info') => {
-        // Simple console notification for now. Can be replaced with a UI element.
         console.log(`[${type.toUpperCase()}] ${message}`);
     };
-    
+
+    // Smoothly animate the confidence readout when new predictions arrive.
     const animateValue = (element, start, end, duration) => {
         let startTimestamp = null;
         const step = (timestamp) => {
@@ -45,14 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         window.requestAnimationFrame(step);
     };
-    
-    // === API FUNCTIONS ===
+
     async function fetchModelStats() {
+        // Populate the sidebar with the latest metrics from the backend.
         try {
             const response = await fetch(`${API_BASE_URL}/model_stats`);
             if (!response.ok) throw new Error('Failed to fetch stats');
             const stats = await response.json();
-            
+
             const container = document.getElementById('model-stats-container');
             container.innerHTML = `
                 <div class="stat-item">
@@ -77,21 +72,22 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Failed to load model statistics', 'error');
         }
     }
-    
+
     async function getPrediction(params) {
+        // Send the current parameter set to the API and reflect the response in the UI.
         try {
             predictionOutput.parentElement.style.opacity = '0.6';
-            
+
             const response = await fetch(`${API_BASE_URL}/predict`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(params)
             });
-            
+
             if (!response.ok) { throw new Error(`API Error: ${response.statusText}`); }
             const result = await response.json();
             if (result.error) { throw new Error(result.error); }
-            
+
             setTimeout(() => {
                 updateExplorerUI(result);
                 predictionOutput.parentElement.style.opacity = '1';
@@ -102,32 +98,31 @@ document.addEventListener('DOMContentLoaded', () => {
             predictionOutput.parentElement.style.opacity = '1';
         }
     }
-    
-    // === UI UPDATE FUNCTIONS ===
+
     function updateExplorerUI(result) {
         const resultElement = predictionOutput;
         resultElement.querySelector('.prediction-text').textContent = result.prediction;
         resultElement.setAttribute('data-prediction', result.prediction);
-        
+
         const currentConfidence = parseFloat(probabilityDisplay.textContent.match(/[\d.]+/)?.[0] || 0);
         const newConfidence = result.probability * 100;
         animateValue(probabilityDisplay, currentConfidence, newConfidence, 500);
-        
+
         explanationText.textContent = generateExplanation(result);
-        
+
         if (result.featureImportance) {
             updateChart(result.featureImportance);
         }
-        
+
         resultElement.style.animation = 'none';
         setTimeout(() => { resultElement.style.animation = ''; }, 10);
     }
-    
+
     function generateExplanation(result) {
         const confidence = (result.probability * 100).toFixed(1);
         const prediction = result.prediction;
         let explanation = `The AI model predicts this candidate is a ${prediction} with ${confidence}% confidence. `;
-        
+
         if (prediction === 'CONFIRMED') {
             explanation += 'The orbital and physical parameters strongly match known exoplanet characteristics.';
         } else if (prediction === 'FALSE POSITIVE') {
@@ -137,8 +132,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return explanation;
     }
-    
+
     function createSliders() {
+        // Generate the Explorer sliders and mirror their defaults into the manual form.
         const sliderDefs = {
             'orbital_period': { label: 'Orbital Period (days)', min: 0.1, max: 200, value: 10, unit: 'd' },
             'transit_duration': { label: 'Transit Duration (days)', min: 0.01, max: 0.5, value: 0.125, unit: 'd' },
@@ -149,26 +145,26 @@ document.addEventListener('DOMContentLoaded', () => {
             'stellar_radius': { label: 'Stellar Radius (R☉)', min: 0.1, max: 20, value: 1, unit: 'R☉' },
             'stellar_log_g': { label: 'Stellar Gravity (log g)', min: 1, max: 6, value: 4.5, unit: '' }
         };
-        
+
         sliderContainer.innerHTML = '';
         manualForm.innerHTML = '';
-        
+
         for (const key in sliderDefs) {
             const def = sliderDefs[key];
             currentParams[key] = def.value;
-            
+
             const sliderGroup = document.createElement('div');
             sliderGroup.className = 'slider-group';
-            
+
             const label = document.createElement('label');
             label.innerHTML = `<span>${def.label}</span><span id="${key}-val">${def.value.toFixed(2)}${def.unit}</span>`;
-            
+
             const slider = document.createElement('input');
             slider.type = 'range'; slider.min = def.min; slider.max = def.max; slider.value = def.value;
             slider.step = (def.max - def.min) / 200;
             slider.setAttribute('data-key', key);
             slider.setAttribute('data-unit', def.unit || '');
-            
+
             let predictionTimeout;
             slider.oninput = (e) => {
                 const val = parseFloat(e.target.value);
@@ -177,19 +173,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearTimeout(predictionTimeout);
                 predictionTimeout = setTimeout(() => getPrediction(currentParams), 300);
             };
-            
+
             sliderGroup.appendChild(label);
             sliderGroup.appendChild(slider);
             sliderContainer.appendChild(sliderGroup);
-            
+
             const input = document.createElement('input');
             input.type = 'number'; input.name = key; input.placeholder = def.label;
             input.step = 'any'; input.required = true;
             manualForm.appendChild(input);
         }
     }
-    
+
     function updateChart(importanceData) {
+        // Lazily create the Chart.js instance and refresh bars with each prediction.
         const ctx = document.getElementById('importance-chart').getContext('2d');
         if (!importanceChart) {
             importanceChart = new Chart(ctx, {
@@ -228,9 +225,8 @@ document.addEventListener('DOMContentLoaded', () => {
         importanceChart.data.datasets[0].data = importanceData.map(d => d.value);
         importanceChart.update('active');
     }
-    
-    // === EVENT LISTENERS ===
-    
+
+
     modeExplorerBtn.onclick = () => {
         modeExplorerBtn.classList.add('active');
         modeResearcherBtn.classList.remove('active');
@@ -239,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
         explorerControls.classList.remove('hidden');
         researcherControls.classList.add('hidden');
     };
-    
+
     modeResearcherBtn.onclick = () => {
         modeResearcherBtn.classList.add('active');
         modeExplorerBtn.classList.remove('active');
@@ -248,7 +244,7 @@ document.addEventListener('DOMContentLoaded', () => {
         researcherControls.classList.remove('hidden');
         explorerControls.classList.add('hidden');
     };
-    
+
     loadRandomBtn.onclick = async () => {
         loadRandomBtn.disabled = true;
         loadRandomBtn.innerHTML = '<span class="loading"></span><span>Generating...</span>';
@@ -264,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     slider.value = newValue;
                     const unit = slider.getAttribute('data-unit') || '';
                     document.getElementById(`${key}-val`).textContent = newValue.toFixed(2) + unit;
-                    currentParams[key] = newValue; // Update current state
+                    currentParams[key] = newValue;
                 }
             }
             await getPrediction(currentParams);
@@ -278,27 +274,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 500);
         }
     };
-    
+
     classifyManualBtn.onclick = async (e) => {
         e.preventDefault();
         const formData = new FormData(manualForm);
         const data = {};
         let isValid = true;
-        
+
         for (let [key, value] of formData.entries()) {
             const numValue = parseFloat(value);
             if (isNaN(numValue)) { isValid = false; break; }
             data[key] = numValue;
         }
-        
+
         if (!isValid) {
             showNotification('Please fill all fields with valid numbers', 'error');
             return;
         }
-        
+
         classifyManualBtn.disabled = true;
         classifyManualBtn.innerHTML = '<span class="loading"></span><span>Classifying...</span>';
-        
+
         try {
             const response = await fetch(`${API_BASE_URL}/predict`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
             const result = await response.json();
@@ -313,19 +309,19 @@ document.addEventListener('DOMContentLoaded', () => {
             classifyManualBtn.innerHTML = `<span>Classify Candidate</span><svg width="16" height="16" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>`;
         }
     };
-    
+
     fileInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         const formData = new FormData();
         formData.append('file', file);
         resultsTableContainer.innerHTML = `<div class="empty-state"><span class="loading" style="width: 40px; height: 40px; margin-bottom: 20px;"></span><p>Processing ${file.name}...</p></div>`;
-        
+
         try {
             const response = await fetch(`${API_BASE_URL}/predict_batch`, { method: 'POST', body: formData });
             const results = await response.json();
-            
+
             if (results.error) {
                 resultsTableContainer.innerHTML = `<div class="empty-state"><p>Error: ${results.error}</p></div>`;
                 showNotification(results.error, 'error');
@@ -341,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fileInput.value = '';
         }
     };
-    
+
     const uploadLabel = document.querySelector('.upload-label');
     uploadLabel.addEventListener('dragover', (e) => { e.preventDefault(); uploadLabel.classList.add('active'); });
     uploadLabel.addEventListener('dragleave', () => { uploadLabel.classList.remove('active'); });
@@ -356,17 +352,17 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Please upload a CSV file', 'error');
         }
     });
-    
+
     function createResultsTable(data) {
         if (!data || data.length === 0) { return `<div class="empty-state"><p>No results to display</p></div>`; }
-        
+
         const headers = ['prediction', 'probability', 'planet_radius', 'orbital_period', 'transit_depth'];
         const headerLabels = { 'prediction': 'Classification', 'probability': 'Confidence', 'planet_radius': 'Radius (R⊕)', 'orbital_period': 'Period (days)', 'transit_depth': 'Depth (ppm)' };
-        
+
         let table = '<table><thead><tr>';
         headers.forEach(h => { table += `<th>${headerLabels[h] || h}</th>`; });
         table += '</tr></thead><tbody>';
-        
+
         data.forEach(row => {
             table += '<tr>';
             headers.forEach(h => {
@@ -382,9 +378,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             table += '</tr>';
         });
-        
+
         table += '</tbody></table>';
-        
+
         const summary = `
             <div class="results-summary">
                 <div><span>Total</span><strong class="text-blue">${data.length}</strong></div>
@@ -392,10 +388,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div><span>Candidates</span><strong class="text-warning">${data.filter(r => r.prediction === 'CANDIDATE').length}</strong></div>
                 <div><span>False Positives</span><strong class="text-error">${data.filter(r => r.prediction === 'FALSE POSITIVE').length}</strong></div>
             </div>`;
-        
+
         return table + summary;
     }
-    
+
     const style = document.createElement('style');
     style.textContent = `
         .text-success { color: var(--success) !important; } .text-error { color: var(--error) !important; } .text-warning { color: var(--warning) !important; } .text-blue { color: var(--accent-blue) !important; }
@@ -406,24 +402,23 @@ document.addEventListener('DOMContentLoaded', () => {
         .results-summary > div > strong { font-size: 1.5rem; font-weight: 700; }
     `;
     document.head.appendChild(style);
-    
+
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === '1') { e.preventDefault(); modeExplorerBtn.click(); }
         if ((e.ctrlKey || e.metaKey) && e.key === '2') { e.preventDefault(); modeResearcherBtn.click(); }
         if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !explorerView.classList.contains('hidden')) { e.preventDefault(); loadRandomBtn.click(); }
     });
-    
-    // === INITIALIZATION ===
+
     createSliders();
     fetchModelStats();
     getPrediction(currentParams);
-    
+
     setTimeout(() => {
         document.querySelectorAll('.glass-card').forEach((card, index) => {
             card.style.animationDelay = `${index * 0.1}s`;
         });
     }, 100);
-    
+
     console.log('%c🚀 Exo-Explorer Dashboard Initialized', 'color: #38bdf8; font-size: 16px; font-weight: bold;');
     console.log('%c⌨️  Keyboard Shortcuts:', 'color: #8b5cf6; font-weight: bold;');
     console.log('  Ctrl/Cmd + 1: Explorer Mode');

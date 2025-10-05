@@ -1,5 +1,3 @@
-# File: backend/app.py
-
 import os
 import json
 import threading
@@ -11,56 +9,52 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
-
-# --- Import from model_trainer ---
-# This allows the backend to use the same cleaning logic for the random candidate feature
+# Import training utilities so runtime API and training share the same helpers.
 try:
     from model_trainer import run_training_pipeline, clean_dataset, standardize_columns
 except ImportError:
     print("WARNING: model_trainer.py not found. Retraining and random candidate features will not work correctly.")
-    # Define dummy functions if the import fails so the app can still start
+
+    # Fallback no-op functions allow the server to start even if training code is missing.
     def run_training_pipeline(hyperparameters=None): return {'error': 'Training script not found.'}
     def clean_dataset(data, name, col): return data
     def standardize_columns(df, name): return df
 
-# --- CONFIGURATION ---
 MODEL_PATH = 'models/lightgbm_model.pkl'
 SCALER_PATH = 'models/scaler.pkl'
 FEATURES_PATH = 'models/features.json'
 STATS_PATH = 'models/model_stats.json'
 KEPLER_DATA_PATH = 'data/koi.csv'
-USER_DATA_PATH = 'user_data' # Path to save uploaded files
+USER_DATA_PATH = 'user_data'
 
-# --- GLOBAL OBJECTS ---
 app = Flask(__name__)
 CORS(app)
 model, scaler, features, model_stats = None, None, None, None
-# This dataframe will hold the cleaned data for the "load random" feature
+
 kepler_df_cleaned_std = None
 model_lock = threading.Lock()
 
-# --- LOADING FUNCTION ---
 def load_artifacts():
     """Loads all necessary artifacts: model, scaler, features, stats, and data."""
     global model, scaler, features, model_stats, kepler_df_cleaned_std
     print("Attempting to load all artifacts...")
     artifacts_loaded = True
-    
+
     with model_lock:
         try:
-            # 1. Load Model, Scaler, and Features
+
             if os.path.exists(MODEL_PATH): model = joblib.load(MODEL_PATH)
             else: artifacts_loaded = False; print(f"⚠️ Model not found at {MODEL_PATH}")
-            
+
             if os.path.exists(SCALER_PATH): scaler = joblib.load(SCALER_PATH)
             else: artifacts_loaded = False; print(f"⚠️ Scaler not found at {SCALER_PATH}")
 
             if os.path.exists(FEATURES_PATH):
                 with open(FEATURES_PATH, 'r') as f: features = json.load(f)
             else: artifacts_loaded = False; print(f"⚠️ Features list not found at {FEATURES_PATH}")
-            
-            # 2. Load and process Kepler data for the random candidate feature
+
             if os.path.exists(KEPLER_DATA_PATH):
+                # Mirror the training pipeline so random_candidate samples the same feature space.
                 raw_kepler_df = pd.read_csv(KEPLER_DATA_PATH, comment='#')
                 cleaned_kepler = clean_dataset(raw_kepler_df, 'Kepler', 'koi_disposition')
                 kepler_df_cleaned_std = standardize_columns(cleaned_kepler, 'Kepler')
@@ -69,7 +63,6 @@ def load_artifacts():
                 print(f"⚠️ Kepler data not found at {KEPLER_DATA_PATH}")
                 kepler_df_cleaned_std = pd.DataFrame()
 
-            # 3. Load Model Stats
             if os.path.exists(STATS_PATH):
                 with open(STATS_PATH, 'r') as f: model_stats = json.load(f)
                 print(f"✅ Model stats loaded from {STATS_PATH}")
@@ -87,8 +80,6 @@ def load_artifacts():
         print("🛑 Some artifacts are missing. Please run `python model_trainer.py` to generate them.")
     return artifacts_loaded
 
-# --- API ENDPOINTS ---
-
 @app.route('/model_stats', methods=['GET'])
 def get_model_stats():
     """Serves the real model statistics loaded from the JSON file."""
@@ -102,10 +93,9 @@ def get_random_candidate():
     """Selects a random candidate from the PRE-CLEANED data pool, ensuring all features are present."""
     if kepler_df_cleaned_std is None or kepler_df_cleaned_std.empty or features is None:
         return jsonify({'error': 'Server data not fully loaded for random candidates'}), 500
-    
-    # Sample from the cleaned and standardized dataframe to guarantee no missing values
+
     random_row = kepler_df_cleaned_std[features].dropna().sample(1)
-    
+
     return jsonify(random_row.to_dict('records')[0])
 
 @app.route('/predict', methods=['POST'])
@@ -114,25 +104,24 @@ def predict_single():
     with model_lock:
         if not all([model, scaler, features]):
             return jsonify({'error': 'Backend not ready. Model artifacts are missing.'}), 500
-    
+
     json_data = request.get_json()
     try:
-        # The frontend sends standardized names, so we build the DataFrame directly
+
         input_df = pd.DataFrame([json_data], columns=features)
-        
+
         scaled_data = scaler.transform(input_df)
-        
+
         with model_lock:
             probability = model.predict_proba(scaled_data)[0][1]
             feature_importances = model.feature_importances_
-        
-        # Apply the 2-class logic
+
         prediction_class = 'CONFIRMED' if probability > 0.5 else 'FALSE POSITIVE'
-        
+
         importance_data = [{'feature': feat, 'value': float(imp)} for feat, imp in zip(features, feature_importances)]
 
         return jsonify({
-            'prediction': prediction_class, 
+            'prediction': prediction_class,
             'probability': float(probability),
             'featureImportance': sorted(importance_data, key=lambda x: x['value'], reverse=True)
         })
@@ -145,14 +134,14 @@ def predict_batch():
     with model_lock:
         if not all([model, scaler, features]):
             return jsonify({'error': 'Backend not ready.'}), 500
-        
+
     if 'file' not in request.files or not request.files['file'].filename:
         return jsonify({'error': 'No file selected'}), 400
-    
+
     file = request.files['file']
 
-    # Save the uploaded file first
     try:
+        # Persist a copy of the upload so analysts can inspect the batch later.
         filename = secure_filename(file.filename)
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         save_path = os.path.join(USER_DATA_PATH, f"{timestamp}_{filename}")
@@ -162,16 +151,11 @@ def predict_batch():
         file.seek(0)
     except Exception as e:
         print(f"⚠️ Error saving user file: {str(e)}")
-    
+
     try:
-        # *** KEY CHANGE: Added `comment='#'` to handle NASA data files correctly ***
+
         df = pd.read_csv(file, comment='#')
 
-        # --- Data Standardization for Uploaded CSV ---
-        # The uploaded file might have raw names (e.g., koi_period), so we must standardize them
-        # before prediction, just like in the training script.
-        
-        # This is a simplified standardization, assuming the uploaded file has Kepler-like names
         df_std = standardize_columns(df, 'Kepler')
 
         if not all(feat in df_std.columns for feat in features):
@@ -184,17 +168,16 @@ def predict_batch():
 
         scaled_data = scaler.transform(df_clean)
         probabilities = model.predict_proba(scaled_data)[:, 1]
-        
+
         df_clean['probability'] = probabilities
         df_clean['prediction'] = df_clean['probability'].apply(
             lambda p: 'CONFIRMED' if p > 0.5 else 'FALSE POSITIVE'
         )
-        
+
         return jsonify(df_clean.to_dict('records'))
     except Exception as e:
-        # Provide a more detailed error message to the frontend
+
         return jsonify({'error': f'Error processing file: {str(e)}'}), 500
-    
 
 @app.route('/retrain', methods=['POST'])
 def retrain_model_endpoint():
@@ -215,7 +198,6 @@ def retrain_model_endpoint():
     thread.start()
     return jsonify({'message': 'Model retraining started. The new model will be loaded upon completion.'}), 202
 
-# --- MAIN EXECUTION ---
 if __name__ == '__main__':
     load_artifacts()
     print("\n🚀 Exo-Explorer Backend is running!")
