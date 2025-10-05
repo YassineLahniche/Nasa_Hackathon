@@ -1,1 +1,1 @@
-["orbital_period", "transit_duration", "insolation_flux", "stellar_radius"]
+["orbital_period", "transit_duration", "transit_depth", "planet_radius", "insolation_flux", "stellar_temp", "stellar_radius", "stellar_log_g"]

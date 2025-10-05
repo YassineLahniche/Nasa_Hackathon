@@ -85,52 +85,41 @@ def standardize_columns(df, dataset_name):
 # --- MAIN TRAINING FUNCTION ---
 
 def run_training_pipeline(hyperparameters=None):
-    """
-    Main function to orchestrate the full data processing and model training pipeline.
-    """
     print("\n--- Starting Full Training Pipeline ---\n")
     
-    # 1. Load all datasets
-    raw_data = {}
-    for name, path in DATA_PATHS.items():
-        if os.path.exists(path):
-            raw_data[name] = pd.read_csv(path, comment='#')
-        else:
-            print(f"Warning: Data file not found for {name} at {path}")
-            raw_data[name] = None
-            
-    # 2. Clean each dataset
+    raw_data = {name: pd.read_csv(path, comment='#') if os.path.exists(path) else None for name, path in DATA_PATHS.items()}
+    
     kepler_clean = clean_dataset(raw_data['Kepler'], 'Kepler', 'koi_disposition')
     k2_clean = clean_dataset(raw_data['K2'], 'K2', 'k2c_disp')
     tess_clean = clean_dataset(raw_data['TESS'], 'TESS', 'tfopwg_disp')
     
-    # 3. Standardize column names
     kepler_std = standardize_columns(kepler_clean, 'Kepler')
     k2_std = standardize_columns(k2_clean, 'K2')
     tess_std = standardize_columns(tess_clean, 'TESS')
     
-    # 4. Combine into a unified dataset
     datasets_to_combine = [df for df in [kepler_std, k2_std, tess_std] if df is not None]
     if not datasets_to_combine:
-        print("Error: No data available to train the model.")
-        return
-    
-    # Find common feature columns to create the unified dataset
-    common_feature_cols = list(set.intersection(*[set(df.columns) for df in datasets_to_combine]))
-    essential_cols = ['is_exoplanet', 'source'] # Keep these essential columns
-    final_cols = list(set(common_feature_cols + essential_cols))
-    
-    unified_data = pd.concat([df.filter(items=final_cols) for df in datasets_to_combine], ignore_index=True)
-    print(f"\nUnified dataset created with {len(unified_data)} rows and {len(unified_data.columns)} columns.")
+        return {'error': "No data to train model."}
 
-    # 5. Define final features and prepare for training
+    # *** KEY CHANGE: Use all available features by concatenating everything ***
+    unified_data = pd.concat(datasets_to_combine, ignore_index=True, sort=False)
+    print(f"\nUnified dataset created with {len(unified_data)} rows.")
+
+    # Define our master list of all 8 features we want to use
     final_features = [
-        'orbital_period', 'transit_duration', 'transit_depth',
-        'planet_radius', 'insolation_flux', 'stellar_radius'
+        'orbital_period', 'transit_duration', 'transit_depth', 'planet_radius',
+        'insolation_flux', 'stellar_temp', 'stellar_radius', 'stellar_log_g'
     ]
+    
+    # Filter for features that actually exist in the combined dataset
     final_features = [f for f in final_features if f in unified_data.columns]
     
-    unified_data.dropna(subset=final_features + ['is_exoplanet'], inplace=True)
+    # Impute any remaining missing values that resulted from the merge
+    for col in final_features:
+        if unified_data[col].isnull().sum() > 0:
+            unified_data[col].fillna(unified_data[col].median(), inplace=True)
+            
+    unified_data.dropna(subset=['is_exoplanet'], inplace=True)
     
     X = unified_data[final_features]
     y = unified_data['is_exoplanet']

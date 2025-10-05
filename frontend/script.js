@@ -141,9 +141,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function createSliders() {
         const sliderDefs = {
             'orbital_period': { label: 'Orbital Period (days)', min: 0.1, max: 200, value: 10, unit: 'd' },
-            'transit_duration': { label: 'Transit Duration (hours)', min: 0.1, max: 100, value: 0.125, unit: 'h' },
-            'insolation_flux': { label: 'Insolation Flux (F⊕)', min: 0.1, max: 3000, value: 10, unit: 'F⊕' },
-            'stellar_radius': { label: 'Stellar Radius (R☉)', min: 0.1, max: 20, value: 1, unit: 'R☉' }
+            'transit_duration': { label: 'Transit Duration (days)', min: 0.01, max: 0.5, value: 0.125, unit: 'd' },
+            'transit_depth': { label: 'Transit Depth (ppm)', min: 1, max: 20000, value: 500, unit: '' },
+            'planet_radius': { label: 'Planetary Radius (R⊕)', min: 0.1, max: 25, value: 2, unit: 'R⊕' },
+            'insolation_flux': { label: 'Insolation Flux (F⊕)', min: 0.1, max: 1000, value: 10, unit: 'F⊕' },
+            'stellar_temp': { label: 'Stellar Temp (K)', min: 2000, max: 10000, value: 5500, unit: 'K' },
+            'stellar_radius': { label: 'Stellar Radius (R☉)', min: 0.1, max: 20, value: 1, unit: 'R☉' },
+            'stellar_log_g': { label: 'Stellar Gravity (log g)', min: 1, max: 6, value: 4.5, unit: '' }
         };
         
         sliderContainer.innerHTML = '';
